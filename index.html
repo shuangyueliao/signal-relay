@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="description" content="Signal Relay — place radio relay towers across disaster terrain. Hills cast signal shadows, forests shorten range. Cover every village on budget. Free original HTML5 puzzle.">
+<title>Signal Relay — Radio Coverage Puzzle</title>
+<script>
+// 平台 SDK 按域名条件加载（独立运行时完全不加载，游戏行为不变）
+(function () {
+  var host = location.hostname || "";
+  try {
+    if (host.indexOf("crazygames") !== -1) {
+      var s1 = document.createElement("script");
+      s1.src = "https://sdk.crazygames.com/crazygames-sdk-v3.js";
+      s1.onload = function () {
+        if (window.CrazyGames && window.CrazyGames.SDK) {
+          window.CrazyGames.SDK.init().then(function () {
+            try { window.CrazyGames.SDK.game.loadingStart(); } catch (e) {}
+            window.addEventListener("load", function () { try { window.CrazyGames.SDK.game.loadingStop(); } catch (e) {} });
+          }).catch(function () {});
+        }
+      };
+      document.head.appendChild(s1);
+      window.__portal = "crazygames";
+    } else if (host.indexOf("gamedistribution") !== -1 || host.indexOf("html5.gamedistribution.com") !== -1 || host.indexOf("gd.games") !== -1) {
+      var s2 = document.createElement("script");
+      s2.src = "https://sdk.gamedistribution.com/v2/main.min.js";
+      document.head.appendChild(s2);
+      window.__portal = "gamedistribution";
+    }
+  } catch (e) {}
+})();
+</script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; overflow:hidden; background:#131a12; font-family:-apple-system,"Helvetica Neue",Arial,sans-serif; }
+  #wrap { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #hud { width:100%; max-width:520px; display:flex; justify-content:space-between; align-items:center; padding:6px 10px 2px; color:#e8eee4; gap:6px; }
+  .stat { text-align:center; min-width:52px; }
+  .stat .label { font-size:9px; color:#8fa08a; letter-spacing:1px; }
+  .stat .val { font-size:16px; font-weight:800; }
+  .stat .val.warn { color:#e66a5a; }
+  #lvlName { font-size:11px; font-weight:700; color:#b8ccae; letter-spacing:1px; text-align:right; max-width:110px; }
+  #lvlName small { display:block; color:#74856f; font-weight:400; font-size:9px; letter-spacing:2px; }
+  #stage { position:relative; }
+  canvas { display:block; border-radius:10px; touch-action:none; border:1px solid #2c3a28; }
+  #toolbar { display:flex; gap:6px; padding:6px 4px 2px; align-items:stretch; }
+  #toolbar button { font-family:inherit; }
+  .twr { border:1px solid #3a4a34; background:#1c2619; color:#cfe0c6; border-radius:9px; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer; line-height:1.25; }
+  .twr small { display:block; font-weight:400; color:#8fa08a; font-size:9px; }
+  .twr.sel { background:#2e4426; border-color:#6fae54; color:#eaffdd; box-shadow:0 0 0 1px #6fae54 inset; }
+  .twr.poor { opacity:.38; }
+  .tbtn { border:1px solid #3a4a34; background:#161d13; color:#a9bda0; border-radius:9px; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer; }
+  .tbtn:active { transform:scale(.96); }
+  #footer { color:#5a6a55; font-size:10px; padding:5px 0 8px; }
+  .olay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(8,12,7,.8); border-radius:10px; z-index:5; }
+  .panel { background:#182114; border:1px solid #3a4a34; border-radius:16px; padding:20px 26px; text-align:center; color:#eaf2e4; max-width:92%; max-height:96%; overflow:auto; }
+  .panel h1 { font-size:26px; letter-spacing:3px; color:#9fe07a; margin-bottom:2px; }
+  .panel h2 { font-size:20px; letter-spacing:1px; color:#9fe07a; margin-bottom:4px; }
+  .panel .tag { color:#9db294; font-size:11px; margin-bottom:12px; }
+  #lvlGrid { display:grid; grid-template-columns:repeat(5,52px); gap:7px; justify-content:center; margin:10px 0 12px; }
+  .lv { width:52px; height:46px; border-radius:9px; border:1px solid #3a4a34; background:#202b1b; color:#dcebd2; font-weight:800; font-size:15px; cursor:pointer; font-family:inherit; padding-top:4px; }
+  .lv small { display:block; font-size:8px; letter-spacing:1px; color:#e8c860; font-weight:400; margin-top:1px; }
+  .lv.lock { opacity:.32; cursor:default; }
+  .lv.done { border-color:#5d8a45; background:#26361e; }
+  #howto { color:#8fa08a; font-size:10px; line-height:1.7; margin-bottom:10px; }
+  .mbtn { background:linear-gradient(135deg,#4c7a35,#6fae54); color:#fff; border:none; border-radius:10px; padding:10px 26px; font-size:14px; font-weight:800; cursor:pointer; margin:3px 4px; font-family:inherit; }
+  .mbtn.alt { background:#243219; border:1px solid #4a5f40; }
+  .mbtn:active { transform:scale(.97); }
+  #stars { font-size:30px; letter-spacing:6px; color:#e8c860; margin:6px 0; }
+  #winStats { color:#9db294; font-size:12px; margin-bottom:12px; }
+  #sndBtn { margin-top:4px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="stat"><div class="label">COVERAGE</div><div class="val" id="cov">0/0</div></div>
+    <div class="stat"><div class="label">BUDGET</div><div class="val" id="bud">0</div></div>
+    <div class="stat" id="redBox" style="display:none"><div class="label">REDUNDANT</div><div class="val" id="red">0/0</div></div>
+    <div class="stat" id="netBox" style="display:none"><div class="label">NETWORK</div><div class="val" id="net">—</div></div>
+    <div id="lvlName">SIGNAL RELAY<small>SELECT LEVEL</small></div>
+  </div>
+  <div id="stage">
+    <canvas id="game"></canvas>
+    <div class="olay" id="menu">
+      <div class="panel">
+        <h1>SIGNAL RELAY</h1>
+        <p class="tag">Raise relay towers. Reach every village. Respect the terrain.</p>
+        <div id="lvlGrid"></div>
+        <div id="howto">
+          HILLS block line-of-sight and cast signal shadows<br>
+          FOREST canopy weakens the signal — range shrinks to 60%<br>
+          Some villages need 2 towers (redundancy) &middot; some need a tower chain (network)<br>
+          Save at least 30% of the budget for three stars
+        </div>
+        <button class="mbtn" id="playBtn">PLAY</button>
+        <button class="mbtn alt" id="sndBtn">SOUND: ON</button>
+      </div>
+    </div>
+    <div class="olay" id="win">
+      <div class="panel">
+        <h2>COVERAGE COMPLETE</h2>
+        <div id="stars"></div>
+        <p id="winStats"></p>
+        <button class="mbtn" id="nextBtn">NEXT LEVEL</button>
+        <button class="mbtn alt" id="replayBtn">REPLAY</button>
+        <button class="mbtn alt" id="lvlsBtn">LEVELS</button>
+      </div>
+    </div>
+  </div>
+  <div id="toolbar">
+    <button class="twr sel" data-t="S">SMALL<small>R150 &middot; $30</small></button>
+    <button class="twr" data-t="M">MEDIUM<small>R220 &middot; $50</small></button>
+    <button class="twr" data-t="L">LARGE<small>R300 &middot; $80</small></button>
+    <button class="tbtn" id="clearBtn">CLEAR</button>
+    <button class="tbtn" id="sndBtn2">SND ON</button>
+    <button class="tbtn" id="menuBtn">EXIT</button>
+  </div>
+  <div id="footer">Signal Relay — a free original coverage puzzle</div>
+</div>
+<script>
+"use strict";
+// ================= 常量与数据 =================
+var MW = 480, MH = 600, CELL = 15;
+var GC = Math.ceil(MW / CELL), GR = Math.ceil(MH / CELL);
+var T_OPEN = 0, T_FOREST = 1, T_HILL = 2;
+var FOREST_W = 5 / 3;          // 密林路径放大系数：信号等效距离 ×(1/0.6)，即有效半径缩至 60%
+var NET_MIN = 0.2;             // 组网：两塔覆盖圈重叠面积 ≥ 较小圆面积的 20%
+var TOWERS = {
+  S: { r: 150, cost: 30, label: "SMALL",  col: "#3fa8c8" },
+  M: { r: 220, cost: 50, label: "MEDIUM", col: "#e0a32f" },
+  L: { r: 300, cost: 80, label: "LARGE",  col: "#c85a8a" }
+};
+// 25 关手工设计：v 村庄[x,y,名] h 高地椭圆[cx,cy,rx,ry] f 密林圆[cx,cy,r]
+// red 需双塔冗余的村庄下标 net 是否要求组网 b 预算 sol 参考解[塔型,x,y]
+var LEVELS = [
+{n:"First Light",b:80,v:[[150,140,"Brook"],[330,460,"Ashton"]],h:[],f:[],red:[],net:0,sol:[["M",240,300]]},
+{n:"Three Corners",b:80,v:[[110,120,"Cedar"],[370,140,"Dunmore"],[240,470,"Elm"]],h:[],f:[],red:[],net:0,sol:[["M",240,260]]},
+{n:"Quadrant",b:120,v:[[90,90,"Fern"],[390,90,"Gale"],[90,510,"Hollow"],[390,510,"Iris"]],h:[],f:[],red:[],net:0,sol:[["L",240,300]]},
+{n:"Wide Field",b:120,v:[[60,300,"Jetty"],[240,80,"Kestrel"],[420,300,"Lark"],[240,520,"Maple"]],h:[],f:[],red:[],net:0,sol:[["L",240,290]]},
+{n:"The Ridge",b:90,v:[[120,180,"Norton"],[360,420,"Oak"]],h:[[240,300,70,110]],f:[],red:[],net:0,sol:[["S",150,140],["S",340,440]]},
+{n:"Shadow Pass",b:120,v:[[110,120,"Pine"],[380,140,"Quarry"],[240,540,"Ridge"]],h:[[240,330,110,90]],f:[],red:[],net:0,sol:[["M",180,190],["S",240,490]]},
+{n:"Twin Peaks",b:120,v:[[240,120,"Stone"],[80,300,"Thorn"],[400,300,"Ulric"],[240,520,"Vale"]],h:[[140,200,60,60],[340,400,60,60]],f:[],red:[],net:0,sol:[["L",240,320]]},
+{n:"The Canyon",b:160,v:[[240,80,"Wick"],[100,360,"Yarrow"],[380,360,"Zephyr"],[150,560,"Aston"]],h:[[240,250,55,110],[240,470,55,110]],f:[],red:[],net:0,sol:[["M",170,210],["S",310,480],["S",160,500]]},
+{n:"Ridge Valley",b:145,v:[[240,120,"Birch"],[50,560,"Cove"],[430,560,"Dale"],[240,330,"Eyre"]],h:[[120,300,70,80],[360,300,70,80]],f:[],red:[],net:0,sol:[["M",240,220],["M",240,480]]},
+{n:"Pinewood",b:90,v:[[250,300,"Firwood"],[400,200,"Glen"]],h:[],f:[[300,300,70]],red:[],net:0,sol:[["S",150,300],["S",400,290]]},
+{n:"Deep Woods",b:115,v:[[120,250,"Hazel"],[300,100,"Juniper"],[360,420,"Ivy"]],h:[],f:[[120,250,80],[360,420,80]],red:[],net:0,sol:[["M",160,210],["S",400,460]]},
+{n:"Greenwall",b:120,v:[[120,260,"Kelp"],[360,260,"Larch"],[240,60,"Moss"]],h:[],f:[[240,200,60],[240,320,60]],red:[],net:0,sol:[["L",240,130]]},
+{n:"Forest Ridge",b:130,v:[[150,420,"Nettle"],[420,300,"Osier"],[120,120,"Pine"]],h:[[300,180,70,90]],f:[[150,420,70]],red:[],net:0,sol:[["M",140,320],["S",420,250]]},
+{n:"Old Growth",b:130,v:[[240,300,"Oakum"],[240,120,"Peat"],[400,480,"Quill"]],h:[],f:[[240,300,110]],red:[],net:0,sol:[["S",270,330],["S",240,180],["S",400,440]]},
+{n:"Backup Line",b:90,v:[[240,300,"Rye"],[80,120,"Sable"],[400,480,"Tarn"]],h:[],f:[],red:[0],net:0,sol:[["S",150,220],["S",330,380]]},
+{n:"Twin Watch",b:190,v:[[150,150,"Umber"],[420,120,"Willow"],[330,450,"Verge"],[60,480,"Yew"]],h:[[240,300,60,80]],f:[],red:[0],net:0,sol:[["M",100,300],["S",150,90],["M",380,250]]},
+{n:"Redundant Ridge",b:160,v:[[100,290,"Aldwin"],[380,290,"Briar"],[240,290,"Cederic"]],h:[[240,150,90,60],[240,430,60,90]],f:[],red:[0,1],net:0,sol:[["M",240,240],["S",100,200],["S",380,380]]},
+{n:"Safe Harbor",b:180,v:[[100,150,"Dover"],[400,300,"Eastmoor"],[240,480,"Fenn"]],h:[],f:[[100,150,60]],red:[0],net:0,sol:[["S",140,190],["S",60,110],["S",400,240],["S",240,430]]},
+{n:"Highland Hold",b:145,v:[[240,300,"Gorse"],[60,80,"Heather"],[420,520,"Ingle"]],h:[[140,300,60,90],[340,300,60,90]],f:[[240,60,50]],red:[0],net:0,sol:[["M",150,120],["M",330,480]]},
+{n:"Chain West",b:180,v:[[40,560,"Jasper"],[440,60,"Kiln"]],h:[],f:[],red:[],net:1,sol:[["S",120,440],["S",200,350],["S",280,260],["S",350,170]]},
+{n:"Mountain Chain",b:150,v:[[60,480,"Loomis"],[420,120,"Marlow"]],h:[[240,300,60,90]],f:[],red:[],net:1,sol:[["M",100,300],["M",340,150]]},
+{n:"Relay Race",b:190,v:[[40,60,"Norton"],[440,60,"Oakes"],[40,540,"Palmer"],[440,540,"Quinton"]],h:[],f:[],red:[],net:1,sol:[["M",240,110],["S",240,300],["M",240,490]]},
+{n:"Pass and Pines",b:175,v:[[100,120,"Rowan"],[380,480,"Sedge"],[140,480,"Thistle"]],h:[[240,320,60,100]],f:[[100,120,60],[380,480,60]],red:[2],net:0,sol:[["S",140,160],["S",140,430],["S",100,430],["S",420,520]]},
+{n:"The Long Watch",b:205,v:[[240,300,"Upton"],[60,80,"Vance"],[420,520,"Winslow"]],h:[[140,300,60,110],[340,300,60,110]],f:[[240,80,50],[240,520,50]],red:[0],net:1,sol:[["M",240,250],["S",240,350],["S",120,120],["S",400,470]]},
+{n:"Grand Relay",b:240,v:[[60,300,"York"],[420,300,"Zephyr"],[240,300,"Adair"]],h:[[240,180,60,70],[240,440,60,70]],f:[[60,300,55],[420,300,55]],red:[0,1],net:1,sol:[["S",100,270],["S",100,330],["S",240,330],["S",385,265],["S",385,335]]}
+];
+
+// ================= 纯逻辑核心（无 DOM，可单测） =================
+function cellIdx(x, y) {
+  if (x < 0 || y < 0 || x >= MW || y >= MH) return -1;
+  return Math.floor(y / CELL) * GC + Math.floor(x / CELL);
+}
+// 地形栅格：0 开阔 1 密林 2 高地（格子中心落在形状内即算）
+function buildGrid(level) {
+  var g = new Uint8Array(GC * GR);
+  var h = level.h || [], f = level.f || [];
+  for (var r = 0; r < GR; r++) for (var c = 0; c < GC; c++) {
+    var cx = c * CELL + CELL / 2, cy = r * CELL + CELL / 2, i, k = 0;
+    for (i = 0; i < h.length; i++) {
+      var dx = (cx - h[i][0]) / h[i][2], dy = (cy - h[i][1]) / h[i][3];
+      if (dx * dx + dy * dy < 1) { k = T_HILL; break; }
+    }
+    if (!k) for (i = 0; i < f.length; i++) {
+      var ddx = cx - f[i][0], ddy = cy - f[i][1];
+      if (ddx * ddx + ddy * ddy < f[i][2] * f[i][2]) { k = T_FOREST; break; }
+    }
+    g[r * GC + c] = k;
+  }
+  return g;
+}
+// 视距：塔→目标连线分段采样，跳过两端所在格，命中高地格即被遮挡
+function hasLOS(grid, x1, y1, x2, y2) {
+  var dx = x2 - x1, dy = y2 - y1, d = Math.sqrt(dx * dx + dy * dy);
+  if (d < 1) return true;
+  var n = Math.max(1, Math.ceil(d / 6)), seg = d / n;
+  var c1 = cellIdx(x1, y1), c2 = cellIdx(x2, y2);
+  for (var i = 0; i < n; i++) {
+    var t = (i + 0.5) * seg;
+    var ci = cellIdx(x1 + dx / d * t, y1 + dy / d * t);
+    if (ci < 0 || ci === c1 || ci === c2) continue;
+    if (grid[ci] === T_HILL) return false;
+  }
+  return true;
+}
+// 等效信号距离：开阔地按实际距离，密林格内每米按 5/3 计（等效半径 ×0.6）
+function pathEff(grid, x1, y1, x2, y2) {
+  var dx = x2 - x1, dy = y2 - y1, d = Math.sqrt(dx * dx + dy * dy);
+  if (d < 0.001) return 0;
+  var n = Math.max(1, Math.ceil(d / 6)), seg = d / n, eff = 0;
+  for (var i = 0; i < n; i++) {
+    var t = (i + 0.5) * seg;
+    var ci = cellIdx(x1 + dx / d * t, y1 + dy / d * t);
+    eff += seg * (ci >= 0 && grid[ci] === T_FOREST ? FOREST_W : 1);
+  }
+  return eff;
+}
+// 覆盖判定：标称距离 ≤ 塔半径 且 等效距离 ≤ 塔半径 且 视距通
+function covers(grid, tw, x, y) {
+  var T = TOWERS[tw.t];
+  var dx = x - tw.x, dy = y - tw.y, d = Math.sqrt(dx * dx + dy * dy);
+  if (d > T.r + 1e-6) return false;
+  if (pathEff(grid, tw.x, tw.y, x, y) > T.r + 1e-6) return false;
+  return hasLOS(grid, tw.x, tw.y, x, y);
+}
+// 两圆重叠面积占较小圆面积的比例（组网判定用）
+function overlapRatio(r1, r2, d) {
+  if (d >= r1 + r2) return 0;
+  var m = Math.min(r1, r2);
+  if (d <= Math.abs(r1 - r2)) return 1;
+  // 标准圆弧弓形面积式（含普通交集）
+  var area = r1 * r1 * Math.acos((d * d + r1 * r1 - r2 * r2) / (2 * d * r1))
+       + r2 * r2 * Math.acos((d * d + r2 * r2 - r1 * r1) / (2 * d * r2))
+       - 0.5 * Math.sqrt(Math.max(0, (-d + r1 + r2) * (d + r1 - r2) * (d - r1 + r2) * (d + r1 + r2)));
+  return area / (Math.PI * m * m);
+}
+function towersLinked(a, b) {
+  var dx = a.x - b.x, dy = a.y - b.y;
+  return overlapRatio(TOWERS[a.t].r, TOWERS[b.t].r, Math.sqrt(dx * dx + dy * dy)) >= NET_MIN - 1e-9;
+}
+function networkConnected(towers) {
+  if (towers.length < 2) return true;
+  var seen = [0], stack = [0];
+  while (stack.length) {
+    var cur = stack.pop();
+    for (var i = 0; i < towers.length; i++) {
+      if (seen.indexOf(i) < 0 && towersLinked(towers[cur], towers[i])) { seen.push(i); stack.push(i); }
+    }
+  }
+  return seen.length === towers.length;
+}
+// 放置合法性：地图内 / 不在高地格 / 不贴村庄 / 不叠塔 / 预算够
+function canPlace(level, grid, towers, x, y, type, left) {
+  if (x < 16 || x > MW - 16 || y < 16 || y > MH - 16) return "OUT OF MAP";
+  if (cellIdx(x, y) >= 0 && grid[cellIdx(x, y)] === T_HILL) return "CANNOT BUILD ON HILL";
+  for (var i = 0; i < level.v.length; i++)
+    if (Math.hypot(x - level.v[i][0], y - level.v[i][1]) < 20) return "TOO CLOSE TO VILLAGE";
+  for (var j = 0; j < towers.length; j++)
+    if (Math.hypot(x - towers[j].x, y - towers[j].y) < 28) return "TOO CLOSE TO TOWER";
+  if (TOWERS[type].cost > left) return "NOT ENOUGH BUDGET";
+  return null;
+}
+// 关卡判定：覆盖率 / 冗余 / 组网 / 预算 / 星级
+function evaluate(level, towers) {
+  var grid = buildGrid(level);
+  var covs = [], cost = 0, i, j;
+  for (i = 0; i < level.v.length; i++) {
+    var n = 0;
+    for (j = 0; j < towers.length; j++) if (covers(grid, towers[j], level.v[i][0], level.v[i][1])) n++;
+    covs.push(n);
+  }
+  for (j = 0; j < towers.length; j++) cost += TOWERS[towers[j].t].cost;
+  var covered = 0;
+  for (i = 0; i < covs.length; i++) if (covs[i] > 0) covered++;
+  var redOK = true, redHave = 0, redNeed = (level.red || []).length;
+  for (i = 0; i < redNeed; i++) { if (covs[level.red[i]] >= 2) redHave++; else redOK = false; }
+  var netOK = !level.net || networkConnected(towers);
+  var left = level.b - cost;
+  var win = covered === level.v.length && redOK && netOK && left >= 0;
+  var stars = 0;
+  if (win) stars = left >= level.b * 0.3 - 1e-9 ? 3 : (left >= level.b * 0.15 - 1e-9 ? 2 : 1);
+  return { covs: covs, covered: covered, redOK: redOK, redHave: redHave, redNeed: redNeed,
+           netOK: netOK, cost: cost, left: left, win: win, stars: stars };
+}
+// 导出给自动化测试（浏览器中无害）
+if (typeof globalThis !== "undefined") globalThis.__SR = {
+  MW: MW, MH: MH, CELL: CELL, GC: GC, GR: GR, T_OPEN: T_OPEN, T_FOREST: T_FOREST, T_HILL: T_HILL,
+  TOWERS: TOWERS, LEVELS: LEVELS, FOREST_W: FOREST_W, NET_MIN: NET_MIN,
+  buildGrid: buildGrid, hasLOS: hasLOS, pathEff: pathEff, covers: covers,
+  overlapRatio: overlapRatio, towersLinked: towersLinked, networkConnected: networkConnected,
+  canPlace: canPlace, evaluate: evaluate, cellIdx: cellIdx
+};
+
+// ================= 引擎与 UI（仅在浏览器环境启动） =================
+function boot() {
+  var canvas = document.getElementById("game");
+  var ctx = canvas.getContext("2d");
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = MW * dpr; canvas.height = MH * dpr;
+  ctx.scale(dpr, dpr);
+
+  // ---- 进度存取（全部 try/catch） ----
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  var unlocked = lsGet("sr_unlocked", 1);
+  var starArr = lsGet("sr_stars", []);
+  var bestArr = lsGet("sr_best", []);
+  var muted = lsGet("sr_muted", false);
+
+  // ---- 音效（WebAudio 全合成） ----
+  var actx = null;
+  function audio() {
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+      return actx;
+    } catch (e) { return null; }
+  }
+  function tone(freq, dur, type, gain, delay, slide) {
+    if (muted) return;
+    try {
+      var a = audio(); if (!a) return;
+      var t0 = a.currentTime + (delay || 0);
+      var o = a.createOscillator(), g = a.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(freq, t0);
+      if (slide) o.frequency.exponentialRampToValueAtTime(slide, t0 + dur);
+      g.gain.setValueAtTime(gain || 0.1, t0);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      o.connect(g); g.connect(a.destination);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    } catch (e) {}
+  }
+  function staticNoise(dur, gain, delay, cutoff) {
+    if (muted) return;
+    try {
+      var a = audio(); if (!a) return;
+      var t0 = a.currentTime + (delay || 0);
+      var len = Math.max(1, Math.floor(a.sampleRate * dur));
+      var buf = a.createBuffer(1, len, a.sampleRate);
+      var data = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var src = a.createBufferSource(); src.buffer = buf;
+      var fl = a.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = cutoff || 1800;
+      var g = a.createGain(); g.gain.value = gain || 0.08;
+      src.connect(fl); fl.connect(g); g.connect(a.destination);
+      src.start(t0);
+    } catch (e) {}
+  }
+  function sndPlace() { staticNoise(0.05, 0.12, 0, 900); tone(150, 0.1, "square", 0.09, 0, 90); }
+  function sndRemove() { tone(260, 0.12, "square", 0.06, 0, 120); staticNoise(0.04, 0.06, 0, 700); }
+  function sndCover() { staticNoise(0.22, 0.05, 0, 2600); tone(880, 0.1, "sine", 0.08, 0.06); tone(1318, 0.14, "sine", 0.06, 0.15); }
+  function sndError() { tone(120, 0.2, "sawtooth", 0.1); }
+  function sndWin() { tone(587, 0.14, "sine", 0.09); tone(784, 0.14, "sine", 0.09, 0.14); tone(1046, 0.55, "sine", 0.1, 0.3); staticNoise(0.3, 0.03, 0.3, 3000); }
+  function sndClick() { tone(1150, 0.03, "square", 0.04); }
+
+  // ---- 平台埋点（CG 域名守卫后才有效） ----
+  function portalStart() {
+    try { if (window.__portal === "crazygames" && window.CrazyGames && window.CrazyGames.SDK) window.CrazyGames.SDK.game.gameplayStart(); } catch (e) {}
+  }
+  function portalStop(happy) {
+    try {
+      if (window.__portal === "crazygames" && window.CrazyGames && window.CrazyGames.SDK) {
+        window.CrazyGames.SDK.game.gameplayStop();
+        if (happy) window.CrazyGames.SDK.game.happytime();
+      }
+    } catch (e) {}
+  }
+
+  // ---- 状态 ----
+  var screen = "menu";
+  var curLevel = 0;
+  var level = LEVELS[0];
+  var grid = buildGrid(level);
+  var towers = [];               // {t,x,y,born,shape}
+  var sel = "S";
+  var ghost = { on: false, x: -999, y: -999, ok: false, why: "" };
+  var floats = [];               // 漂浮提示
+  var lastCovered = 0;
+  var winShown = false;
+
+  // ---- 随机数（地形装饰用，固定种子） ----
+  function rng(seed) {
+    var s = seed >>> 0;
+    return function () { s |= 0; s = (s + 0x6D2B79F5) | 0; var t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+
+  // ---- 地形预渲染（分层色带 + 等高线细描 + 高地网格暗纹 + 密林树冠） ----
+  var hatch = null;
+  function makeHatch() {
+    var hc = document.createElement("canvas"); hc.width = 8; hc.height = 8;
+    var hx = hc.getContext("2d");
+    hx.strokeStyle = "rgba(52,38,24,0.30)"; hx.lineWidth = 1;
+    hx.beginPath(); hx.moveTo(0, 8); hx.lineTo(8, 0); hx.stroke();
+    hx.beginPath(); hx.moveTo(-2, 2); hx.lineTo(2, -2); hx.stroke();
+    hx.beginPath(); hx.moveTo(6, 10); hx.lineTo(10, 6); hx.stroke();
+    hatch = ctx.createPattern(hc, "repeat");
+  }
+  var terr = null;
+  function renderTerrain(lv, seed) {
+    var off = document.createElement("canvas");
+    off.width = MW * dpr; off.height = MH * dpr;
+    var g = off.getContext("2d"); g.scale(dpr, dpr);
+    // 底色分层色带
+    var base = g.createLinearGradient(0, 0, 0, MH);
+    base.addColorStop(0, "#cdd8b4"); base.addColorStop(0.55, "#c3d2a8"); base.addColorStop(1, "#b9cba0");
+    g.fillStyle = base; g.fillRect(0, 0, MW, MH);
+    var rd = rng(seed);
+    // 大尺度浅色等高带（装饰）
+    for (var band = 0; band < 5; band++) {
+      g.beginPath();
+      g.ellipse(rd() * MW, rd() * MH, 120 + rd() * 160, 70 + rd() * 120, rd() * 3, 0, Math.PI * 2);
+      g.fillStyle = band % 2 ? "rgba(255,255,240,0.10)" : "rgba(96,120,70,0.07)";
+      g.fill();
+    }
+    // 细等高线（波浪横线）
+    g.strokeStyle = "rgba(96,80,52,0.10)"; g.lineWidth = 1;
+    for (var ly = 24; ly < MH; ly += 34) {
+      g.beginPath();
+      for (var lx = 0; lx <= MW; lx += 12) {
+        var yy = ly + Math.sin(lx * 0.02 + ly * 0.13 + seed) * 5 + Math.sin(lx * 0.006 + seed * 2) * 7;
+        if (lx === 0) g.moveTo(lx, yy); else g.lineTo(lx, yy);
+      }
+      g.stroke();
+    }
+    // 高地：填充 + 等高线细描 + 网格暗纹
+    for (var hi = 0; hi < lv.h.length; hi++) {
+      var h = lv.h[hi];
+      g.save();
+      g.beginPath(); g.ellipse(h[0], h[1], h[2] + 6, h[3] + 6, 0, 0, Math.PI * 2);
+      g.fillStyle = "rgba(120,96,64,0.18)"; g.fill();
+      g.beginPath(); g.ellipse(h[0], h[1], h[2], h[3], 0, 0, Math.PI * 2);
+      var hg = g.createRadialGradient(h[0], h[1], 4, h[0], h[1], Math.max(h[2], h[3]));
+      hg.addColorStop(0, "#a08a68"); hg.addColorStop(1, "#b7a482");
+      g.fillStyle = hg; g.fill();
+      g.clip();
+      g.fillStyle = hatch; g.fillRect(h[0] - h[2] - 4, h[1] - h[3] - 4, h[2] * 2 + 8, h[3] * 2 + 8);
+      g.restore();
+      // 同心等高线
+      var rings = [1, 0.82, 0.62, 0.4];
+      for (var ri = 0; ri < rings.length; ri++) {
+        g.beginPath(); g.ellipse(h[0], h[1], h[2] * rings[ri], h[3] * rings[ri], 0, 0, Math.PI * 2);
+        g.strokeStyle = ri === 0 ? "rgba(74,56,34,0.65)" : "rgba(74,56,34,0.4)";
+        g.lineWidth = ri === 0 ? 1.6 : 1;
+        g.stroke();
+      }
+    }
+    // 密林：底色 + 树冠簇
+    for (var fi = 0; fi < lv.f.length; fi++) {
+      var f = lv.f[fi];
+      g.beginPath(); g.arc(f[0], f[1], f[2] + 4, 0, Math.PI * 2);
+      g.fillStyle = "rgba(52,94,52,0.30)"; g.fill();
+      g.strokeStyle = "rgba(40,76,40,0.5)"; g.setLineDash([4, 4]); g.lineWidth = 1;
+      g.stroke(); g.setLineDash([]);
+      var count = Math.floor(f[2] * f[2] / 130);
+      for (var ti = 0; ti < count; ti++) {
+        var a = rd() * Math.PI * 2, rr = Math.sqrt(rd()) * (f[2] - 3);
+        var tx = f[0] + Math.cos(a) * rr, ty = f[1] + Math.sin(a) * rr;
+        g.beginPath(); g.arc(tx, ty, 2.4 + rd() * 2.6, 0, Math.PI * 2);
+        g.fillStyle = rd() < 0.5 ? "rgba(38,84,44,0.85)" : "rgba(56,108,52,0.85)";
+        g.fill();
+      }
+    }
+    // 地图边框与刻度
+    g.strokeStyle = "rgba(60,72,50,0.5)"; g.lineWidth = 1.5;
+    g.strokeRect(1, 1, MW - 2, MH - 2);
+    g.strokeStyle = "rgba(60,72,50,0.25)";
+    for (var gx = 60; gx < MW; gx += 60) { g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, 8); g.moveTo(gx, MH); g.lineTo(gx, MH - 8); g.stroke(); }
+    for (var gy = 60; gy < MH; gy += 60) { g.beginPath(); g.moveTo(0, gy); g.lineTo(8, gy); g.moveTo(MW, gy); g.lineTo(MW - 8, gy); g.stroke(); }
+    return off;
+  }
+
+  // ---- 覆盖形状缓存（真实信号区域：高地咬口 + 密林收缩） ----
+  function computeShape(tw) {
+    var R = TOWERS[tw.t].r, N = 96, arr = [];
+    for (var k = 0; k < N; k++) {
+      var a = k / N * Math.PI * 2;
+      arr.push(covers(grid, tw, tw.x + Math.cos(a) * R, tw.y + Math.sin(a) * R));
+    }
+    return arr;
+  }
+
+  // ---- HUD ----
+  var elCov = document.getElementById("cov"), elBud = document.getElementById("bud");
+  var elRed = document.getElementById("red"), elNet = document.getElementById("net");
+  var elRedBox = document.getElementById("redBox"), elNetBox = document.getElementById("netBox");
+  var elLvlName = document.getElementById("lvlName");
+  function hud() {
+    var ev = evaluate(level, towers);
+    elCov.textContent = ev.covered + "/" + level.v.length;
+    elBud.textContent = "$" + ev.left;
+    elBud.className = "val" + (ev.left < 0 ? " warn" : "");
+    if (level.red && level.red.length) {
+      elRedBox.style.display = ""; elRed.textContent = ev.redHave + "/" + ev.redNeed;
+      elRed.className = "val" + (ev.redOK ? "" : " warn");
+    } else elRedBox.style.display = "none";
+    if (level.net) { elNetBox.style.display = ""; elNet.textContent = ev.netOK ? "LINKED" : "OPEN"; elNet.className = "val" + (ev.netOK ? "" : " warn"); }
+    else elNetBox.style.display = "none";
+    elLvlName.innerHTML = "LV " + (curLevel + 1) + " · " + level.n.toUpperCase() + "<small>OBJECTIVE " + (level.net ? "NETWORK " : "") + (level.red && level.red.length ? "REDUNDANT " : "") + "COVERAGE</small>";
+    return ev;
+  }
+
+  // ---- 工具栏 ----
+  var twrBtns = document.querySelectorAll(".twr");
+  function toolbar(ev) {
+    if (!ev) ev = evaluate(level, towers);
+    for (var i = 0; i < twrBtns.length; i++) {
+      var b = twrBtns[i], t = b.getAttribute("data-t");
+      b.classList.toggle("sel", t === sel);
+      b.classList.toggle("poor", TOWERS[t].cost > ev.left);
+    }
+  }
+
+  // ---- 过关 ----
+  var elWin = document.getElementById("win"), elStars = document.getElementById("stars"), elWinStats = document.getElementById("winStats");
+  function checkWin(ev) {
+    if (ev.win && !winShown) {
+      winShown = true;
+      var newly = false;
+      if ((starArr[curLevel] || 0) < ev.stars) { starArr[curLevel] = ev.stars; newly = true; }
+      if ((bestArr[curLevel] || 0) < ev.left) bestArr[curLevel] = ev.left;
+      if (curLevel + 2 > unlocked && curLevel + 1 < LEVELS.length) { unlocked = curLevel + 2; newly = true; }
+      if (curLevel + 1 >= LEVELS.length && unlocked < LEVELS.length) unlocked = LEVELS.length;
+      lsSet("sr_stars", starArr); lsSet("sr_best", bestArr); lsSet("sr_unlocked", unlocked);
+      setTimeout(function () {
+        var ev2 = evaluate(level, towers);
+        if (!ev2.win) { winShown = false; return; } // 延迟期间局面被改动则取消
+        ev = ev2;
+        elStars.textContent = "★★★".slice(0, ev.stars) + "☆☆☆".slice(0, 3 - ev.stars);
+        var best = bestArr[curLevel] || 0;
+        elWinStats.textContent = "BUDGET SAVED $" + ev.left + (best > ev.left ? " · BEST $" + best : " · NEW BEST") +
+          " · SPENT $" + ev.cost + " OF $" + level.b;
+        document.getElementById("nextBtn").style.display = curLevel + 1 < LEVELS.length ? "" : "none";
+        elWin.style.display = "flex";
+        sndWin(); portalStop(true);
+      }, 620);
+    }
+  }
+
+  // ---- 放置 / 移除 ----
+  function place(x, y) {
+    var ev = evaluate(level, towers);
+    var err = canPlace(level, grid, towers, x, y, sel, ev.left);
+    if (err) {
+      sndError();
+      float(x, y, err, "#e05a4a");
+      if (err === "NOT ENOUGH BUDGET") { elBud.className = "val warn"; }
+      return;
+    }
+    var tw = { t: sel, x: x, y: y, born: performance.now() };
+    tw.shape = computeShape(tw);
+    towers.push(tw);
+    sndPlace();
+    ev = hud(); toolbar(ev); checkWin(ev);
+  }
+  function removeAt(x, y) {
+    for (var i = towers.length - 1; i >= 0; i--) {
+      if (Math.hypot(towers[i].x - x, towers[i].y - y) < 22) {
+        towers.splice(i, 1);
+        sndRemove();
+        var ev = hud(); toolbar(ev);
+        return true;
+      }
+    }
+    return false;
+  }
+  function float(x, y, txt, col) { floats.push({ x: x, y: y - 14, txt: txt, col: col || "#fff", life: 1 }); }
+
+  // ---- 渲染 ----
+  function drawShape(tw, now) {
+    var T = TOWERS[tw.t];
+    var anim = Math.min(1, (now - tw.born) / 450);
+    var e = 1 - Math.pow(1 - anim, 3);
+    var R = T.r * e;
+    var breathe = 1 + Math.sin(now / 700 + tw.x * 0.05) * 0.018;
+    ctx.beginPath();
+    var N = tw.shape.length, run = false;
+    for (var k = 0; k <= N; k++) {
+      var ok = k < N && tw.shape[k];
+      if (ok) {
+        var a = k / N * Math.PI * 2;
+        var px = tw.x + Math.cos(a) * R * breathe, py = tw.y + Math.sin(a) * R * breathe;
+        if (!run) { ctx.moveTo(px, py); run = true; } else ctx.lineTo(px, py);
+      } else if (run) { ctx.closePath(); run = false; }
+    }
+    ctx.fillStyle = hexA(T.col, 0.1);
+    ctx.fill();
+    ctx.strokeStyle = hexA(T.col, 0.35); ctx.lineWidth = 1.5; ctx.stroke();
+    // 计划半径虚线
+    ctx.beginPath(); ctx.arc(tw.x, tw.y, R * breathe, 0, Math.PI * 2);
+    ctx.setLineDash([3, 7]); ctx.strokeStyle = hexA(T.col, 0.22); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+  }
+  function hexA(hex, a) {
+    var n = parseInt(hex.slice(1), 16);
+    return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+  }
+  function drawTower(tw, now, isGhost) {
+    var T = TOWERS[tw.t];
+    var anim = isGhost ? 1 : Math.min(1, (now - tw.born) / 450);
+    var e = 1 - Math.pow(1 - anim, 3);
+    var ax = tw.x, ay = tw.y - 17 * e;
+    ctx.strokeStyle = isGhost ? hexA(T.col, 0.9) : "#4a4038";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(tw.x - 8 * e, tw.y + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(tw.x + 8 * e, tw.y + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(tw.x, tw.y + 5 * e); ctx.stroke();
+    ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.moveTo(tw.x, tw.y + 2); ctx.lineTo(ax, ay); ctx.stroke();
+    // 天线头 + 信号灯闪烁
+    ctx.beginPath(); ctx.arc(ax, ay, 3, 0, Math.PI * 2);
+    ctx.fillStyle = T.col; ctx.fill();
+    if (!isGhost) {
+      var blink = 0.5 + 0.5 * Math.sin(now / 260 + tw.x);
+      ctx.beginPath(); ctx.arc(ax, ay - 5, 1.6, 0, Math.PI * 2);
+      ctx.fillStyle = hexA("#ffe28a", blink); ctx.fill();
+    }
+    if (isGhost) {
+      ctx.beginPath(); ctx.arc(tw.x, tw.y, 5, 0, Math.PI * 2);
+      ctx.strokeStyle = hexA(T.col, 0.7); ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  }
+  function drawVillage(v, idx, ev, now) {
+    var x = v[0], y = v[1], n = ev.covs[idx];
+    var needRed = (level.red || []).indexOf(idx) >= 0;
+    // 小屋
+    ctx.fillStyle = "#e8d9b0";
+    ctx.fillRect(x - 6, y - 3, 12, 8);
+    ctx.fillStyle = "#7c4a2c";
+    ctx.beginPath(); ctx.moveTo(x - 8, y - 3); ctx.lineTo(x, y - 11); ctx.lineTo(x + 8, y - 3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#5a3820"; ctx.fillRect(x - 1.5, y + 1, 3, 4);
+    // 名称
+    ctx.font = "700 9px sans-serif"; ctx.textAlign = "center";
+    ctx.lineWidth = 3; ctx.strokeStyle = "rgba(240,244,228,0.85)";
+    ctx.strokeText(v[2], x, y + 15);
+    ctx.fillStyle = "#33402c"; ctx.fillText(v[2], x, y + 15);
+    // 覆盖状态
+    if (n > 0) {
+      ctx.strokeStyle = hexA("#3fae62", 0.9); ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(x, y - 2, 13, 0, Math.PI * 2); ctx.stroke();
+      // 信号波纹
+      var ph = ((now / 1300) + idx * 0.33) % 1;
+      ctx.beginPath(); ctx.arc(x, y - 2, 13 + ph * 14, 0, Math.PI * 2);
+      ctx.strokeStyle = hexA("#3fae62", 0.55 * (1 - ph)); ctx.stroke();
+      ph = ((now / 1300) + idx * 0.33 + 0.5) % 1;
+      ctx.beginPath(); ctx.arc(x, y - 2, 13 + ph * 14, 0, Math.PI * 2);
+      ctx.strokeStyle = hexA("#3fae62", 0.4 * (1 - ph)); ctx.stroke();
+    } else {
+      ctx.setLineDash([3, 3]);
+      ctx.strokeStyle = "rgba(90,84,60,0.8)"; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(x, y - 2, 13, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // 冗余徽标
+    if (needRed) {
+      var ok2 = n >= 2;
+      ctx.beginPath(); ctx.arc(x + 14, y - 14, 7.5, 0, Math.PI * 2);
+      ctx.fillStyle = ok2 ? "#2c7a44" : "#b98a2e"; ctx.fill();
+      ctx.font = "800 8px sans-serif"; ctx.fillStyle = "#fff";
+      ctx.fillText("×2", x + 14, y - 11.4);
+    }
+  }
+  function drawLinks(ev) {
+    if (!level.net || towers.length < 2) return;
+    for (var i = 0; i < towers.length; i++) for (var j = i + 1; j < towers.length; j++) {
+      var a = towers[i], b = towers[j];
+      var d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d > TOWERS[a.t].r + TOWERS[b.t].r) continue;
+      var lk = towersLinked(a, b);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      if (lk) { ctx.strokeStyle = "rgba(70,190,110,0.75)"; ctx.lineWidth = 2; ctx.setLineDash([]); }
+      else { ctx.strokeStyle = "rgba(214,80,64,0.55)"; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  function drawGhost(now, ev) {
+    if (!ghost.on || screen !== "game") return;
+    var T = TOWERS[sel];
+    var err = canPlace(level, grid, towers, ghost.x, ghost.y, sel, ev.left);
+    // 预览连线：可覆盖=绿 / 距离内被挡=红 / 距离外=灰
+    if (!err) {
+      var gt = { t: sel, x: ghost.x, y: ghost.y };
+      for (var i = 0; i < level.v.length; i++) {
+        var v = level.v[i];
+        var d = Math.hypot(v[0] - ghost.x, v[1] - ghost.y);
+        if (d > T.r) continue;
+        var cov = covers(grid, gt, v[0], v[1]);
+        ctx.beginPath(); ctx.moveTo(ghost.x, ghost.y); ctx.lineTo(v[0], v[1]);
+        if (cov) { ctx.strokeStyle = "rgba(70,190,110,0.8)"; ctx.setLineDash([]); }
+        else { ctx.strokeStyle = "rgba(220,86,70,0.8)"; ctx.setLineDash([4, 4]); }
+        ctx.lineWidth = 1.4; ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+    // 临时形状（真实信号区预览）
+    var sh = computeShape({ t: sel, x: ghost.x, y: ghost.y });
+    ctx.beginPath();
+    var run = false, N = sh.length;
+    for (var k = 0; k <= N; k++) {
+      var ok = k < N && sh[k];
+      if (ok) {
+        var a = k / N * Math.PI * 2;
+        var px = ghost.x + Math.cos(a) * T.r, py = ghost.y + Math.sin(a) * T.r;
+        if (!run) { ctx.moveTo(px, py); run = true; } else ctx.lineTo(px, py);
+      } else if (run) { ctx.closePath(); run = false; }
+    }
+    ctx.fillStyle = err ? "rgba(214,80,64,0.10)" : hexA(T.col, 0.12);
+    ctx.fill();
+    ctx.strokeStyle = err ? "rgba(214,80,64,0.7)" : hexA(T.col, 0.6);
+    ctx.lineWidth = 1.5; ctx.stroke();
+    drawTower({ t: sel, x: ghost.x, y: ghost.y, born: 0 }, now, true);
+    if (err) {
+      ctx.font = "800 10px sans-serif"; ctx.textAlign = "center";
+      ctx.fillStyle = "#d65040";
+      ctx.fillText(err, ghost.x, ghost.y - 26);
+    }
+  }
+
+  var last = 0;
+  function frame(t) {
+    var now = t;
+    ctx.clearRect(0, 0, MW, MH);
+    if (screen === "game") {
+      ctx.drawImage(terr, 0, 0, MW, MH);
+      var ev = evaluate(level, towers);
+      drawLinks(ev);
+      for (var i = 0; i < towers.length; i++) drawShape(towers[i], now);
+      for (var vi = 0; vi < level.v.length; vi++) drawVillage(level.v[vi], vi, ev, now);
+      for (var ti = 0; ti < towers.length; ti++) drawTower(towers[ti], now, false);
+      drawGhost(now, ev);
+      // 漂浮提示
+      for (var fi = floats.length - 1; fi >= 0; fi--) {
+        var fl = floats[fi]; fl.life -= 0.02; fl.y -= 0.5;
+        if (fl.life <= 0) { floats.splice(fi, 1); continue; }
+        ctx.globalAlpha = Math.min(1, fl.life);
+        ctx.font = "800 10px sans-serif"; ctx.textAlign = "center";
+        ctx.fillStyle = fl.col;
+        ctx.fillText(fl.txt, fl.x, fl.y);
+        ctx.globalAlpha = 1;
+      }
+      // 新覆盖音效
+      if (ev.covered > lastCovered) { sndCover(); }
+      lastCovered = ev.covered;
+    } else {
+      // 菜单背景：地图 + 慢速雷达环
+      ctx.drawImage(terr, 0, 0, MW, MH);
+      ctx.fillStyle = "rgba(10,16,8,0.45)"; ctx.fillRect(0, 0, MW, MH);
+      var cx = MW / 2, cy = MH / 2 - 40;
+      for (var r = 0; r < 3; r++) {
+        var ph = ((now / 2400) + r / 3) % 1;
+        ctx.beginPath(); ctx.arc(cx, cy, 20 + ph * 200, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(140,220,140," + (0.35 * (1 - ph)) + ")"; ctx.lineWidth = 2; ctx.stroke();
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---- 屏幕切换 ----
+  var elMenu = document.getElementById("menu");
+  function startLevel(i) {
+    curLevel = i; level = LEVELS[i];
+    grid = buildGrid(level);
+    towers = []; sel = "S"; floats = []; winShown = false; lastCovered = 0;
+    ghost.on = false;
+    terr = renderTerrain(level, 1000 + i * 77);
+    elMenu.style.display = "none"; elWin.style.display = "none";
+    screen = "game";
+    hud(); toolbar();
+    sndClick(); portalStart(); fit();
+  }
+  function gotoMenu() {
+    if (screen === "game") portalStop(false);
+    screen = "menu";
+    buildLevelGrid();
+    elWin.style.display = "none"; elMenu.style.display = "flex";
+    document.getElementById("lvlName").innerHTML = "SIGNAL RELAY<small>SELECT LEVEL</small>";
+    sndClick();
+  }
+  var elGrid = document.getElementById("lvlGrid");
+  function buildLevelGrid() {
+    elGrid.innerHTML = "";
+    for (var i = 0; i < LEVELS.length; i++) {
+      var b = document.createElement("button");
+      b.className = "lv";
+      var lock = i + 1 > unlocked;
+      if (lock) b.classList.add("lock");
+      if (starArr[i]) b.classList.add("done");
+      var s = starArr[i] || 0;
+      b.innerHTML = lock ? "·" : (i + 1) + "<small>" + (s ? "★★★".slice(0, s) + "☆☆☆".slice(0, 3 - s) : "—") + "</small>";
+      (function (idx, lk) {
+        b.addEventListener("click", function () { if (!lk) startLevel(idx); });
+      })(i, lock);
+      elGrid.appendChild(b);
+    }
+  }
+
+  // ---- 自适应 ----
+  function fit() {
+    var hudH = document.getElementById("hud").offsetHeight;
+    var tbH = document.getElementById("toolbar").offsetHeight;
+    var ftH = document.getElementById("footer").offsetHeight;
+    var availW = Math.min(window.innerWidth - 10, 540);
+    var availH = window.innerHeight - hudH - tbH - ftH - 18;
+    var s = Math.max(0.45, Math.min(availW / MW, availH / MH, 1.1));
+    canvas.style.width = Math.floor(MW * s) + "px";
+    canvas.style.height = Math.floor(MH * s) + "px";
+  }
+  window.addEventListener("resize", fit);
+
+  // ---- 输入（鼠标 + 触控） ----
+  function evtXY(cx, cy) {
+    var rect = canvas.getBoundingClientRect();
+    return { x: (cx - rect.left) / rect.width * MW, y: (cy - rect.top) / rect.height * MH };
+  }
+  function onMove(cx, cy) {
+    var p = evtXY(cx, cy);
+    ghost.x = p.x; ghost.y = p.y; ghost.on = true;
+  }
+  function onTap(cx, cy) {
+    audio();
+    var p = evtXY(cx, cy);
+    ghost.x = p.x; ghost.y = p.y; ghost.on = true;
+    if (!removeAt(p.x, p.y)) place(p.x, p.y);
+    ghost.on = false; // 触屏点击后隐藏预览，桌面端移动鼠标即重现
+  }
+  canvas.addEventListener("mousemove", function (e) { onMove(e.clientX, e.clientY); });
+  canvas.addEventListener("mouseleave", function () { ghost.on = false; });
+  canvas.addEventListener("mousedown", function (e) { onTap(e.clientX, e.clientY); });
+  canvas.addEventListener("touchstart", function (e) { e.preventDefault(); if (e.touches[0]) onTap(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+  canvas.addEventListener("touchmove", function (e) { e.preventDefault(); if (e.touches[0]) onMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+
+  for (var bi = 0; bi < twrBtns.length; bi++) {
+    (function (b) {
+      b.addEventListener("click", function () { sel = b.getAttribute("data-t"); sndClick(); toolbar(); });
+    })(twrBtns[bi]);
+  }
+  document.getElementById("clearBtn").addEventListener("click", function () {
+    if (towers.length) { towers = []; sndRemove(); var ev = hud(); toolbar(ev); }
+  });
+  document.getElementById("menuBtn").addEventListener("click", gotoMenu);
+  document.getElementById("playBtn").addEventListener("click", function () {
+    startLevel(Math.min(unlocked - 1, LEVELS.length - 1));
+  });
+  document.getElementById("nextBtn").addEventListener("click", function () { startLevel(Math.min(curLevel + 1, LEVELS.length - 1)); });
+  document.getElementById("replayBtn").addEventListener("click", function () { startLevel(curLevel); });
+  document.getElementById("lvlsBtn").addEventListener("click", gotoMenu);
+  var sndBtn = document.getElementById("sndBtn");
+  var sndBtn2 = document.getElementById("sndBtn2");
+  function syncSnd() {
+    sndBtn.textContent = "SOUND: " + (muted ? "OFF" : "ON");
+    sndBtn2.textContent = muted ? "SND OFF" : "SND ON";
+  }
+  function toggleSnd() { muted = !muted; lsSet("sr_muted", muted); syncSnd(); if (!muted) sndClick(); }
+  sndBtn.addEventListener("click", toggleSnd);
+  sndBtn2.addEventListener("click", toggleSnd);
+  syncSnd();
+
+  document.addEventListener("keydown", function (e) {
+    if (screen !== "game") { if (e.key === "Enter") startLevel(Math.min(unlocked - 1, LEVELS.length - 1)); return; }
+    if (e.key === "1") { sel = "S"; toolbar(); }
+    if (e.key === "2") { sel = "M"; toolbar(); }
+    if (e.key === "3") { sel = "L"; toolbar(); }
+    if (e.key === "Escape") gotoMenu();
+    if (e.key === "m" || e.key === "M") { muted = !muted; lsSet("sr_muted", muted); syncSnd(); }
+  });
+
+  // ---- 启动 ----
+  makeHatch();
+  terr = renderTerrain(LEVELS[0], 1000);
+  buildLevelGrid();
+  elMenu.style.display = "flex";
+  fit();
+  requestAnimationFrame(frame);
+  window.__sr = {
+    get towers() { return towers; }, get level() { return curLevel; },
+    get screen() { return screen; }, start: startLevel
+  };
+}
+
+if (typeof document !== "undefined" && document.getElementById("game")) boot();
+</script>
+</body>
+</html>
